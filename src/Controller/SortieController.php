@@ -12,10 +12,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use App\Repository\VilleRepository;
 
 #[Route('/sortie')]
 final class SortieController extends AbstractController
@@ -29,33 +28,42 @@ final class SortieController extends AbstractController
     }
 
     #[IsGranted('ROLE_ADMIN')]
-    #[Route('/new', name: 'sortie_new', methods: ['GET', 'POST'])]
+    #[Route('/new/', name: 'sortie_new', methods: ['GET', 'POST'])]
     public function new(Request $request, EntityManagerInterface $em): Response
     {
         $sortie = new Sortie();
-
-        // Définir l'état par défaut à "Créée"
         $etatCreer = $em->getRepository(Etat::class)->findOneBy(['libelle' => 'Créée']);
+
         if ($etatCreer) {
             $sortie->setEtatSortie($etatCreer);
         } else {
             throw new \Exception("L'état 'Créée' n'existe pas.");
         }
 
-        // Définir l'organisateur pour l'entité Sortie
-        $organisateur = $this->getUser(); // Récupère si l'organisateur est l'utilisateur actuellement connecté
+        $organisateur = $this->getUser();
         $sortie->setOrganisateur($organisateur);
 
         $form = $this->createForm(SortieType::class, $sortie);
-
         $form->handleRequest($request);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em->persist($sortie);
-            $em->flush();
+        if ($form->isSubmitted()) {
+            if ($form->isValid()) {
+                if ($form->get('publish')->isClicked()) {
+                    $etatOuverte = $em->getRepository(Etat::class)->findOneBy(['libelle' => 'Ouverte']);
+                    if ($etatOuverte) {
+                        $sortie->setEtatSortie($etatOuverte);
+                    } else {
+                        throw new \Exception("L'état 'Ouverte' n'existe pas.");
+                    }
+                }
+                $em->persist($sortie);
+                $em->flush();
 
-            // Rediriger vers la route home après la validation
-            return $this->redirectToRoute('home_'); // Assurez-vous que la route 'home' existe
+                $this->addFlash('success', 'Votre sortie a bien été enregistrée');
+                return $this->redirectToRoute('home_');
+            } else {
+                $this->addFlash('error', 'Une erreur est survenue lors de l\'enregistrement de la sortie');
+            }
         }
 
         return $this->render('sortie/new.html.twig', [
@@ -63,23 +71,30 @@ final class SortieController extends AbstractController
         ]);
     }
 
-    #[Route('show/{id}', name: 'app_sortie_show', methods: ['GET'])]
+    #[Route('/show/{id}', name: 'app_sortie_show', methods: ['GET'])]
     public function show(SortieRepository $sortieRepository, string $id): Response
     {
         $id = intval($id);
 
+        // Récupère la sortie à partir de l'ID
         $sortie = $sortieRepository->find($id);
 
+        // Si la sortie n'existe pas, une exception est levée
         if (!$sortie) {
             throw $this->createNotFoundException('No sortie found for id ' . $id);
         }
 
-        // Récupération automatique du lieu grâce à la relation ManyToOne
+        // Récupération du lieu de la sortie
         $lieu = $sortie->getLieuSortie();
 
+        // Récupération des participants inscrits à la sortie
+        $participants = $sortie->getParticipants(); // Méthode qui récupère les participants
+
+        // Rendu de la vue Twig avec les données de la sortie, du lieu, et des participants
         return $this->render('sortie/show.html.twig', [
             'sortie' => $sortie,
-            'lieu' => $lieu, // Le lieu est passé à la vue
+            'lieu' => $lieu,
+            'participants' => $participants, // Transmettre les participants à la vue
         ]);
     }
 
@@ -125,7 +140,9 @@ final class SortieController extends AbstractController
 
         return new JsonResponse([
             'rue' => $lieu->getRue(),
-            'codePostal' => $lieu->getLieuVille()->getCodePostal(), // Ajuste selon la structure de ta base
+            'codePostal' => $lieu->getLieuVille()->getCodePostal(),
+            'latitude' => $lieu->getLatitude(),
+            'longitude' => $lieu->getLongitude()
         ]);
     }
 }

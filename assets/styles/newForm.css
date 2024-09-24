@@ -1,1 +1,18 @@
-/*Vide*/
+/* Style commun pour tous les boutons */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 4px;
+    color: #020202;
+    text-align: center;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: none; /* Retire la décoration par défaut des liens */
+    border: none; /* Retire les bordures par défaut */
+    background-color: #ebecef; /* Couleur de fond */
+    transition: background-color 0.3s, opacity 0.3s; /* Effet de transition */
+}
+
+.btn:hover {
+    background-color: rgba(177, 177, 177, 0.85); /* Couleur de fond au survol */
+}
