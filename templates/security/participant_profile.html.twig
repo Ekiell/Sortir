@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ parent() }} | {{ participant.nom }}{% endblock %}
+
+{% block body %}
+    <style>
+        .imgProfile {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+        }
+    </style>
+    {% if participant.imageProfile is not empty %}
+        <img class="imgProfile" src="{{ asset('uploads/images/' ~ participant.imageProfile) }}" alt="user photo" onerror="this.src='{{ asset('uploads/images/defautProfil.webp') }}';">
+    {% else %}
+        <img class="imgProfile" src="{{ asset('uploads/images/defautProfil.webp') }}" alt="Image de profil par défaut">
+    {% endif %}
+
+    <h1>{{ participant.pseudo }}</h1>
+    <p>Nom : {{ participant.nom }}</p>
+    <p>Prénom : {{ participant.prenom }}</p>
+    <p>Email: {{ participant.mail }}</p>
+    <p>Téléphone: {{ participant.telephone }}</p>
+    <p>Campus: {{ participant.estRattacheA.nom }}</p>
+{% endblock %}
